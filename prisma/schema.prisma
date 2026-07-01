@@ -1,0 +1,117 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Shops ────────────────────────────────────────────────────────────────────
+
+model Shop {
+  id             Int       @id @default(autoincrement())
+  shopDomain     String    @unique @map("shop_domain")
+  accessToken    String    @map("access_token")
+  scopes         String?
+  installedAt    DateTime  @default(now()) @map("installed_at")
+  uninstalledAt  DateTime? @map("uninstalled_at")
+
+  fbtGroups       FbtGroup[]
+  analyticsEvents AnalyticsEvent[]
+  sessions        Session[]
+
+  @@map("shops")
+}
+
+// ─── FBT Groups ───────────────────────────────────────────────────────────────
+
+model FbtGroup {
+  id        Int      @id @default(autoincrement())
+  shopId    Int      @map("shop_id")
+  productId String   @map("product_id") // Shopify product GID
+  title     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  shop          Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  fbtProducts   FbtProduct[]
+  discountRule  DiscountRule?
+  analyticsEvents AnalyticsEvent[]
+
+  @@unique([shopId, productId])
+  @@map("fbt_groups")
+}
+
+// ─── FBT Products (within a group) ───────────────────────────────────────────
+
+model FbtProduct {
+  id        Int      @id @default(autoincrement())
+  groupId   Int      @map("group_id")
+  productId String   @map("product_id") // Shopify product GID
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  group FbtGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@map("fbt_products")
+}
+
+// ─── Discount Rules ───────────────────────────────────────────────────────────
+
+model DiscountRule {
+  id            Int      @id @default(autoincrement())
+  groupId       Int      @unique @map("group_id")
+  discountType  String   @map("discount_type") // 'percentage' | 'fixed' | 'none'
+  discountValue Decimal  @default(0) @map("discount_value") @db.Decimal(10, 2)
+  minItems      Int      @default(2) @map("min_items")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  group FbtGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@map("discount_rules")
+}
+
+// ─── Analytics Events ─────────────────────────────────────────────────────────
+
+model AnalyticsEvent {
+  id        BigInt   @id @default(autoincrement())
+  shopId    Int      @map("shop_id")
+  groupId   Int?     @map("group_id")
+  eventType String   @map("event_type") // 'view' | 'click' | 'add_to_cart' | 'purchase'
+  productId String?  @map("product_id")
+  sessionId String?  @map("session_id")
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  shop  Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  group FbtGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  @@index([shopId, createdAt])
+  @@index([groupId, eventType])
+  @@map("analytics_events")
+}
+
+// ─── Sessions (Shopify OAuth) ─────────────────────────────────────────────────
+
+model Session {
+  id          String    @id
+  shop        String
+  state       String?
+  isOnline    Boolean   @default(false) @map("is_online")
+  scope       String?
+  expires     DateTime?
+  accessToken String?   @map("access_token")
+  userId      BigInt?   @map("user_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  shopRelation Shop? @relation(fields: [shop], references: [shopDomain])
+
+  @@index([shop])
+  @@map("sessions")
+}
