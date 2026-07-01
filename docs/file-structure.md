@@ -1,16 +1,41 @@
-# FBT App — Full File Structure
+# FBT App — Full File Structure (Theme App Extension)
 
 ```
 FBT/
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                        # Lint, typecheck, test on PRs
-│       └── deploy.yml                    # Auto-deploy main → Railway
+│       ├── ci.yml                        # Lint, typecheck, build on PRs
+│       └── deploy.yml                    # Auto-deploy main → Railway on merge
 │
 ├── docs/
-│   ├── architecture.md                   # System architecture diagram
-│   ├── setup-guide.md                    # This setup guide
-│   └── file-structure.md                 # This file
+│   ├── architecture.md                   # System architecture diagram (TAE)
+│   ├── setup-guide.md                    # Full setup & deployment guide
+│   ├── file-structure.md                 # This file
+│   └── tae-migration-plan.md             # ScriptTag → TAE migration notes
+│
+├── extensions/                           # Shopify Theme App Extension
+│   └── fbt-widget/
+│       ├── shopify.extension.toml        # Extension manifest & config
+│       ├── blocks/
+│       │   └── fbt-widget.liquid         # Liquid block (rendered server-side by Shopify)
+│       │                                 # Sets data-* attrs, skeleton loader, loads JS
+│       ├── assets/
+│       │   └── fbt-widget.js             # Built widget bundle (output of widget:build)
+│       │                                 # Served by Shopify Fastly CDN
+│       └── locales/
+│           └── en.default.json           # i18n strings for theme editor UI labels
+│
+├── widget/                               # Widget TypeScript source
+│   ├── src/
+│   │   ├── index.ts                      # Entry point — reads data-* attrs, orchestrates init
+│   │   ├── api.ts                        # Fetch FBT config + product data + send analytics
+│   │   ├── render.ts                     # DOM rendering (products row, footer, CTA)
+│   │   ├── cart.ts                       # Shopify AJAX Cart API (/cart/add.js)
+│   │   ├── currency.ts                   # Price formatting + discount calculation
+│   │   ├── styles.ts                     # Scoped CSS injected as <style> tag
+│   │   ├── types.ts                      # WidgetConfig, BlockSettings, ProductItem
+│   │   └── utils.ts                      # getSessionId, clamp, debounce
+│   └── vite.config.ts                    # Builds IIFE → extensions/fbt-widget/assets/
 │
 ├── app/                                  # React Router v7 app root
 │   │
@@ -25,72 +50,37 @@ FBT/
 │   │   ├── auth/
 │   │   │   ├── login.tsx                 # GET  /auth/login  → OAuth start
 │   │   │   └── callback.tsx              # GET  /auth/callback → OAuth finish
+│   │   │                                 # (no ScriptTag registration)
 │   │   │
 │   │   ├── app/                          # Authenticated admin UI (embedded)
-│   │   │   ├── _layout.tsx               # Shared admin shell (AppBridge, nav)
+│   │   │   ├── _layout.tsx               # Shared admin shell (sidebar nav)
 │   │   │   ├── dashboard.tsx             # GET  /app/dashboard → overview stats
 │   │   │   ├── products/
 │   │   │   │   ├── _index.tsx            # GET  /app/products → list FBT groups
 │   │   │   │   ├── new.tsx               # GET  /app/products/new → create group
-│   │   │   │   └── $groupId.tsx          # GET  /app/products/:id → edit group
-│   │   │   ├── discounts/
-│   │   │   │   ├── _index.tsx            # GET  /app/discounts → list rules
-│   │   │   │   └── $ruleId.tsx           # GET  /app/discounts/:id → edit rule
+│   │   │   │   └── $groupId.tsx          # GET  /app/products/:id → edit group + discount
 │   │   │   ├── analytics/
-│   │   │   │   └── _index.tsx            # GET  /app/analytics → charts & tables
+│   │   │   │   └── _index.tsx            # GET  /app/analytics → charts & top groups
 │   │   │   └── settings/
-│   │   │       └── _index.tsx            # GET  /app/settings → widget config
+│   │   │       └── _index.tsx            # GET  /app/settings → TAE setup guide
+│   │   │                                 # (no "Reinstall Script" — TAE handles delivery)
 │   │   │
-│   │   ├── api/                          # JSON API routes (server-only loaders/actions)
-│   │   │   ├── fbt/
-│   │   │   │   ├── _index.tsx            # GET/POST  /api/fbt
-│   │   │   │   └── $groupId.tsx          # GET/PUT/DELETE /api/fbt/:groupId
-│   │   │   ├── analytics.tsx             # POST /api/analytics (event ingestion)
-│   │   │   ├── discounts/
-│   │   │   │   ├── _index.tsx            # GET/POST  /api/discounts
-│   │   │   │   └── $ruleId.tsx           # GET/PUT/DELETE /api/discounts/:ruleId
-│   │   │   └── widget.tsx                # GET /api/widget?shop=&product= (public)
+│   │   ├── api/                          # JSON API routes (server-only)
+│   │   │   ├── widget.tsx                # GET  /api/widget?shop=&product= (public)
+│   │   │   │                             # Called by widget JS after block renders
+│   │   │   └── analytics.tsx             # POST /api/analytics (public, CORS open)
 │   │   │
 │   │   ├── webhooks/
-│   │   │   ├── orders-paid.tsx           # POST /webhooks/orders-paid
 │   │   │   ├── app-uninstalled.tsx       # POST /webhooks/app-uninstalled
+│   │   │   │                             # (no ScriptTag removal needed)
+│   │   │   ├── orders-paid.tsx           # POST /webhooks/orders-paid
 │   │   │   └── shop-redact.tsx           # POST /webhooks/shop-redact (GDPR)
 │   │   │
 │   │   └── health.tsx                    # GET /health → Railway healthcheck
 │   │
-│   ├── components/                       # Shared React components
-│   │   ├── ui/                           # Generic UI primitives
-│   │   │   ├── Button.tsx
-│   │   │   ├── Card.tsx
-│   │   │   ├── Badge.tsx
-│   │   │   ├── Modal.tsx
-│   │   │   ├── Table.tsx
-│   │   │   ├── Spinner.tsx
-│   │   │   └── EmptyState.tsx
-│   │   │
-│   │   ├── fbt/                          # FBT-specific admin components
-│   │   │   ├── FBTGroupCard.tsx          # Card showing one FBT group
-│   │   │   ├── FBTGroupForm.tsx          # Create/edit FBT group form
-│   │   │   ├── ProductPicker.tsx         # Shopify product search + select
-│   │   │   ├── ProductCard.tsx           # Single product preview card
-│   │   │   └── FBTPreview.tsx            # Live preview of widget in admin
-│   │   │
-│   │   ├── discounts/
-│   │   │   ├── DiscountRuleForm.tsx      # Create/edit discount rule
-│   │   │   └── DiscountBadge.tsx         # Visual discount indicator
-│   │   │
-│   │   ├── analytics/
-│   │   │   ├── StatsCard.tsx             # Single metric card (views, clicks…)
-│   │   │   ├── ConversionChart.tsx       # Line/bar chart (recharts)
-│   │   │   └── TopGroupsTable.tsx        # Best-performing FBT groups
-│   │   │
-│   │   └── layout/
-│   │       ├── AppShell.tsx              # Sidebar + topbar wrapper
-│   │       ├── NavMenu.tsx               # Sidebar navigation links
-│   │       └── PageHeader.tsx            # Page title + action buttons
-│   │
 │   ├── services/                         # Server-side business logic
-│   │   ├── shopify.server.ts             # Shopify API client (Admin + Storefront)
+│   │   ├── shopify.server.ts             # Shopify API client + product search
+│   │   │                                 # (ScriptTag functions removed)
 │   │   ├── auth.server.ts                # OAuth helpers, session management
 │   │   ├── fbt.server.ts                 # FBT group CRUD operations
 │   │   ├── discount.server.ts            # Discount rule logic
@@ -98,54 +88,22 @@ FBT/
 │   │   ├── widget.server.ts              # Widget config builder
 │   │   └── webhook.server.ts             # Webhook verification & handlers
 │   │
-│   ├── db/                               # Database layer
-│   │   ├── client.ts                     # Prisma client singleton
-│   │   ├── schema.prisma                 # Prisma schema (all models)
-│   │   ├── migrations/                   # Auto-generated Prisma migrations
-│   │   │   └── 20240101000000_init/
-│   │   │       └── migration.sql
+│   ├── db/
+│   │   ├── client.ts                     # Prisma client singleton (HMR-safe)
 │   │   └── seed.ts                       # Dev seed data
 │   │
-│   ├── hooks/                            # Custom React hooks (client)
-│   │   ├── useShopify.ts                 # AppBridge context hook
-│   │   ├── useFBTGroups.ts               # FBT group list + mutations
-│   │   └── useAnalytics.ts               # Analytics data fetching
-│   │
-│   ├── utils/                            # Shared utilities
-│   │   ├── shopify.ts                    # GID helpers, API formatters
+│   ├── utils/
+│   │   ├── constants.ts                  # App-wide constants (no ScriptTag constants)
+│   │   ├── shopify.ts                    # GID helpers, GraphQL query builders
 │   │   ├── currency.ts                   # Price formatting
-│   │   ├── date.ts                       # Date formatting helpers
-│   │   ├── validation.ts                 # Zod schemas for forms/API
-│   │   └── constants.ts                  # App-wide constants
+│   │   ├── date.ts                       # Date formatting + range helpers
+│   │   └── validation.ts                 # Zod schemas for forms & API
 │   │
 │   └── styles/
 │       └── app.css                       # Global styles (Tailwind base)
 │
-├── public/                               # Static assets (served as-is)
-│   ├── favicon.ico
-│   └── images/
-│       └── logo.svg
-│
-├── widget/                               # Storefront widget (standalone bundle)
-│   ├── src/
-│   │   ├── index.ts                      # Widget entry point
-│   │   ├── api.ts                        # Fetch FBT data from /api/widget
-│   │   ├── render.ts                     # DOM rendering logic
-│   │   ├── cart.ts                       # Shopify AJAX Cart API integration
-│   │   ├── discount.ts                   # Apply discount code to cart
-│   │   ├── analytics.ts                  # Fire analytics events
-│   │   └── styles.ts                     # Injected CSS (inline)
-│   ├── dist/
-│   │   └── fbt-widget.js                 # Built widget bundle (served publicly)
-│   └── vite.config.ts                    # Vite config for widget build
-│
-├── prisma/                               # Prisma root (symlinked from app/db)
-│   └── schema.prisma
-│
-├── .github/
-│   └── workflows/
-│       ├── ci.yml
-│       └── deploy.yml
+├── prisma/
+│   └── schema.prisma                     # Prisma schema (6 models)
 │
 ├── .env.example                          # Environment variable template
 ├── .env                                  # Local secrets (gitignored)
@@ -156,9 +114,9 @@ FBT/
 ├── tailwind.config.ts
 ├── postcss.config.js
 ├── vite.config.ts                        # React Router v7 / Vite config
-├── react-router.config.ts                # React Router v7 config
+├── react-router.config.ts                # React Router v7 SSR config
 ├── railway.toml                          # Railway deployment config
-├── package.json
+├── package.json                          # Scripts incl. shopify:dev, shopify:deploy
 └── README.md
 ```
 
@@ -166,24 +124,43 @@ FBT/
 
 ## Key Architectural Decisions
 
+### Theme App Extension vs ScriptTag
+| Concern | ScriptTag (removed) | Theme App Extension (current) |
+|---------|--------------------|-----------------------------|
+| Widget delivery | Railway CDN | Shopify Fastly CDN |
+| Product context | `ShopifyAnalytics.meta` (fragile) | `data-product` attr from Liquid (reliable) |
+| Placement | DOM traversal hacks | Merchant drags block in theme editor |
+| App Store | Blocks BfS badge | BfS badge eligible |
+| Scopes needed | `read/write_script_tags` | None (removed) |
+
+### Widget Build Pipeline
+```
+widget/src/*.ts
+      │
+      ▼ vite build (widget/vite.config.ts)
+      │
+      ▼ IIFE bundle
+      │
+extensions/fbt-widget/assets/fbt-widget.js
+      │
+      ▼ shopify app deploy
+      │
+Shopify Fastly CDN (global edge)
+```
+
 ### React Router v7 Route Conventions
-- `_layout.tsx` files create nested layout wrappers (no URL segment)
-- `_index.tsx` is the index route for a folder
-- `$param.tsx` creates dynamic segments
-- Routes in `api/` export only `loader` / `action` (no default component) — they act as pure API endpoints
+- `_layout.tsx` — nested layout wrapper (no URL segment)
+- `_index.tsx` — index route for a folder
+- `$param.tsx` — dynamic segment
+- Routes in `api/` export only `loader`/`action` — pure API endpoints, no UI component
 
 ### Server vs Client Boundary
-| File suffix | Runs on | Notes |
-|-------------|---------|-------|
+| Suffix | Runs on | Notes |
+|--------|---------|-------|
 | `*.server.ts` | Server only | Never bundled to client |
 | `*.client.ts` | Client only | Never runs on server |
 | `*.ts / *.tsx` | Both | Use `typeof window` guards if needed |
 
-### Widget Build (Separate Vite Bundle)
-The storefront widget is built independently via `widget/vite.config.ts` into a single `fbt-widget.js` file. This keeps the widget tiny (~15KB gzipped) and independent of the React Router app bundle.
-
-### Database ORM
-Prisma is used for type-safe database access. The schema lives in `app/db/schema.prisma` and migrations are committed to version control.
-
-### Shopify API Client
-`@shopify/shopify-api` handles OAuth, session storage, and GraphQL requests. Sessions are stored in PostgreSQL (not memory) for Railway's stateless deployment model.
+### Session Storage
+OAuth sessions stored in PostgreSQL (not memory) — required for Railway's
+stateless deployment model where multiple instances may run.

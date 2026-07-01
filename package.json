@@ -16,7 +16,10 @@
     "db:seed": "tsx app/db/seed.ts",
     "db:studio": "prisma studio",
     "widget:build": "vite build --config widget/vite.config.ts",
-    "widget:dev": "vite build --config widget/vite.config.ts --watch"
+    "widget:dev": "vite build --config widget/vite.config.ts --watch",
+    "shopify:dev": "shopify app dev",
+    "shopify:deploy": "npm run widget:build && shopify app deploy",
+    "shopify:info": "shopify app info"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",
@@ -36,6 +39,7 @@
   },
   "devDependencies": {
     "@react-router/dev": "^7.0.0",
+    "@shopify/cli": "^3.67.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@types/node": "^20.14.9",

@@ -1,5 +1,5 @@
 /**
- * Shared types for the FBT widget
+ * Shared types for the FBT widget — Theme App Extension version
  */
 
 export interface WidgetConfig {
@@ -15,6 +15,21 @@ export interface WidgetConfig {
   ctaText: string;
 }
 
+/**
+ * Settings read from the Liquid block's data attributes.
+ * These are set by the merchant in the Shopify theme editor.
+ */
+export interface BlockSettings {
+  appUrl: string;           // data-app-url — Railway app base URL
+  shopDomain: string;       // data-shop — e.g. mystore.myshopify.com
+  productId: string;        // data-product — gid://shopify/Product/123
+  widgetTitle: string;      // data-widget-title
+  ctaText: string;          // data-cta-text
+  buttonColor: string;      // data-button-color — hex colour
+  showSavings: boolean;     // data-show-savings
+  maxProducts: number;      // data-max-products — 1–4
+}
+
 export interface WidgetState {
   config: WidgetConfig;
   products: ProductItem[];
@@ -24,12 +39,12 @@ export interface WidgetState {
 }
 
 export interface ProductItem {
-  id: string;           // GID
-  variantId: string;    // GID
+  id: string;               // GID
+  variantId: string;        // GID
   title: string;
   handle: string;
   image: string | null;
-  price: number;        // cents
+  price: number;            // cents
   currencyCode: string;
   availableForSale: boolean;
   isMain: boolean;

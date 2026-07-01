@@ -12,16 +12,18 @@ A Shopify app that lets merchants configure "Frequently Bought Together" product
 | Database | PostgreSQL via Prisma ORM |
 | Hosting | Railway |
 | CI/CD | GitHub Actions |
-| Widget | Vanilla TS → IIFE bundle (Vite) |
-| Shopify | Admin API (GraphQL), ScriptTag API, Webhooks |
+| Widget | Vanilla TS → IIFE bundle (Vite) → Theme App Extension |
+| Shopify | Admin API (GraphQL), Theme App Extension, Webhooks |
 
 ## Phase 1 Features
 
 - ✅ Manual FBT product linking in admin
-- ✅ Storefront widget via ScriptTag injection
+- ✅ Storefront widget via Theme App Extension (Online Store 2.0)
+- ✅ Merchant-configurable widget (title, CTA, button colour) in theme editor
 - ✅ Bundle discount rules (percentage / fixed)
 - ✅ Basic analytics (views, clicks, add-to-carts, purchases)
 - ✅ Analytics dashboard
+- ✅ Built for Shopify badge eligible (no ScriptTag)
 
 ## Quick Start
 
@@ -41,8 +43,8 @@ createdb fbt_dev
 npm run db:migrate:dev
 npm run db:seed
 
-# 5. Dev server
-npm run dev
+# 5. Dev server + Shopify tunnel
+npm run shopify:dev
 ```
 
 See [docs/setup-guide.md](docs/setup-guide.md) for full setup instructions.
@@ -50,25 +52,57 @@ See [docs/setup-guide.md](docs/setup-guide.md) for full setup instructions.
 ## Project Structure
 
 ```
-app/          # React Router v7 app (routes, services, components)
-widget/       # Standalone storefront widget (Vite IIFE bundle)
-prisma/       # Database schema
-docs/         # Architecture, setup guide, file structure
+app/                  # React Router v7 app (routes, services, components)
+extensions/
+└── fbt-widget/
+    ├── blocks/       # Liquid block template (rendered by Shopify)
+    ├── assets/       # Built widget JS (served by Shopify CDN)
+    ├── locales/      # Theme editor i18n strings
+    └── shopify.extension.toml
+widget/               # Widget TypeScript source → compiled to extensions/fbt-widget/assets/
+prisma/               # Database schema
+docs/                 # Architecture, setup guide, file structure
 ```
 
-See [docs/file-structure.md](docs/file-structure.md) for the full file tree.
+See [docs/file-structure.md](docs/file-structure.md) for the full annotated file tree.
 
-## Architecture
+## Widget Delivery — Theme App Extension
 
-See [docs/architecture.md](docs/architecture.md) for the full system diagram.
+The FBT widget is delivered as a **Theme App Extension** (not a ScriptTag).
+
+- Widget JS is built to `extensions/fbt-widget/assets/fbt-widget.js`
+- Shopify serves it from their Fastly CDN — no Railway cold starts on widget load
+- Merchants activate the block in **Online Store → Themes → Customize → Product page → Add block**
+- Block settings (title, CTA text, button colour, max products) are configurable directly in the theme editor
+- Eligible for the **Built for Shopify** badge
 
 ## Deployment
 
-Hosted on Railway. Merging to `main` triggers auto-deploy via GitHub Actions.
-
+### App Server (Railway)
 ```bash
 railway login && railway link && railway up
 ```
+Merging to `main` triggers auto-deploy via GitHub Actions.
+
+### Theme App Extension (Shopify CDN)
+```bash
+# Build widget JS + deploy extension to Shopify
+npm run shopify:deploy
+```
+
+## Architecture
+
+See [docs/architecture.md](docs/architecture.md) for the full system diagram including the TAE vs ScriptTag data flow comparison.
+
+## Scopes Required
+
+```
+read_products, write_products
+read_discounts, write_discounts
+read_orders
+```
+
+> ScriptTag scopes (`read_script_tags`, `write_script_tags`) removed — no longer needed.
 
 ## Roadmap
 

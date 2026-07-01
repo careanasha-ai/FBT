@@ -1,0 +1,133 @@
+{% comment %}
+  Frequently Bought Together — Theme App Extension Block
+  Target: Product pages (section block)
+  Merchant places this block in the theme editor on the product page template.
+  All widget settings are configurable directly in the theme editor sidebar.
+{% endcomment %}
+
+{% if product %}
+<div
+  id="fbt-widget-root"
+  data-shop="{{ shop.permanent_domain }}"
+  data-product="gid://shopify/Product/{{ product.id }}"
+  data-app-url="{{ extensions.fbt-widget.url }}"
+  data-widget-title="{{ block.settings.widget_title | escape }}"
+  data-cta-text="{{ block.settings.cta_text | escape }}"
+  data-button-color="{{ block.settings.button_color }}"
+  data-show-savings="{{ block.settings.show_savings }}"
+  data-max-products="{{ block.settings.max_products }}"
+  {{ block.shopify_attributes }}
+>
+  {% comment %} Loading skeleton — replaced by JS once widget data loads {% endcomment %}
+  <div class="fbt-skeleton" aria-hidden="true">
+    <div class="fbt-skeleton__title"></div>
+    <div class="fbt-skeleton__products">
+      <div class="fbt-skeleton__card"></div>
+      <div class="fbt-skeleton__plus">+</div>
+      <div class="fbt-skeleton__card"></div>
+      <div class="fbt-skeleton__plus">+</div>
+      <div class="fbt-skeleton__card"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Skeleton loader styles — scoped to this block */
+  #fbt-widget-root .fbt-skeleton {
+    padding: 20px;
+    border: 1px solid #e1e3e5;
+    border-radius: 8px;
+    background: #fff;
+    animation: fbt-pulse 1.5s ease-in-out infinite;
+  }
+  #fbt-widget-root .fbt-skeleton__title {
+    height: 16px;
+    width: 200px;
+    background: #e1e3e5;
+    border-radius: 4px;
+    margin-bottom: 16px;
+  }
+  #fbt-widget-root .fbt-skeleton__products {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #fbt-widget-root .fbt-skeleton__card {
+    width: 130px;
+    height: 160px;
+    background: #e1e3e5;
+    border-radius: 6px;
+  }
+  #fbt-widget-root .fbt-skeleton__plus {
+    color: #c9cccf;
+    font-size: 20px;
+    padding: 0 4px;
+  }
+  @keyframes fbt-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+</style>
+
+<script src="{{ 'fbt-widget.js' | asset_url }}" defer></script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "t:name",
+  "target": "section",
+  "javascript": "fbt-widget.js",
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:settings.header_display.content"
+    },
+    {
+      "type": "text",
+      "id": "widget_title",
+      "label": "t:settings.widget_title.label",
+      "default": "Frequently Bought Together"
+    },
+    {
+      "type": "text",
+      "id": "cta_text",
+      "label": "t:settings.cta_text.label",
+      "default": "Add All to Cart"
+    },
+    {
+      "type": "header",
+      "content": "t:settings.header_appearance.content"
+    },
+    {
+      "type": "color",
+      "id": "button_color",
+      "label": "t:settings.button_color.label",
+      "default": "#008060"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_savings",
+      "label": "t:settings.show_savings.label",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "t:settings.header_products.content"
+    },
+    {
+      "type": "range",
+      "id": "max_products",
+      "label": "t:settings.max_products.label",
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "default": 3
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:presets.default.name"
+    }
+  ]
+}
+{% endschema %}

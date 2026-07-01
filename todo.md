@@ -1,0 +1,15 @@
+# Tasks - TAE Migration
+- [ ] 1. Add shopify.extension.toml
+- [ ] 2. Add fbt-widget.liquid block
+- [ ] 3. Add extension locales
+- [ ] 4. Rewrite widget/src/index.ts (data attrs, no DOM traversal)
+- [ ] 5. Rewrite widget/src/utils.ts (remove DOM hacks)
+- [ ] 6. Rewrite widget/vite.config.ts (extension asset output path)
+- [ ] 7. Update app/services/shopify.server.ts (remove ScriptTag functions)
+- [ ] 8. Update app/routes/auth/callback.tsx (remove ensureScriptTag)
+- [ ] 9. Update app/routes/app/settings/_index.tsx (remove reinstall section)
+- [ ] 10. Update package.json (add extension build/deploy scripts)
+- [ ] 11. Update .gitignore (extension dist)
+- [ ] 12. Update docs/architecture.md (TAE diagram)
+- [ ] 13. Update README.md
+- [ ] 14. Commit and push

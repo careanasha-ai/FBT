@@ -1,30 +1,10 @@
 /**
- * Storefront utility helpers
+ * Widget utility helpers — Theme App Extension version.
+ *
+ * DOM traversal helpers (findInsertionPoint, findAddToCartForm) are removed.
+ * The Liquid block handles placement — the widget renders into #fbt-widget-root.
+ * ShopifyAnalytics.meta dependency is removed — productId comes from data attrs.
  */
-
-/**
- * Get the current Shopify shop domain from the page.
- * Shopify exposes this via the global `Shopify` object on all storefronts.
- */
-export function getShopDomain(): string | null {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const shopify = (window as any).Shopify;
-  return shopify?.shop ?? null;
-}
-
-/**
- * Get the current product's GID from the page.
- * Shopify exposes product data via `ShopifyAnalytics.meta` on product pages.
- */
-export function getCurrentProductId(): string | null {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const meta = (window as any).ShopifyAnalytics?.meta;
-  const numericId = meta?.product?.id;
-
-  if (!numericId) return null;
-
-  return `gid://shopify/Product/${numericId}`;
-}
 
 /**
  * Generate a simple session ID for analytics tracking.
@@ -41,27 +21,22 @@ export function getSessionId(): string {
 }
 
 /**
- * Find the "Add to Cart" form on the current product page.
- * Works with most Shopify themes.
+ * Clamp a number between min and max.
  */
-export function findAddToCartForm(): HTMLFormElement | null {
-  return (
-    document.querySelector<HTMLFormElement>('form[action="/cart/add"]') ?? null
-  );
+export function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
 }
 
 /**
- * Find a good insertion point for the FBT widget.
- * Inserts after the Add to Cart form, or before </main> as fallback.
+ * Debounce a function call.
  */
-export function findInsertionPoint(): Element | null {
-  const form = findAddToCartForm();
-  if (form) return form;
-
-  return (
-    document.querySelector(".product-form") ??
-    document.querySelector(".product__info-container") ??
-    document.querySelector("main") ??
-    null
-  );
+export function debounce<T extends (...args: unknown[]) => void>(
+  fn: T,
+  delay: number
+): (...args: Parameters<T>) => void {
+  let timer: ReturnType<typeof setTimeout>;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
 }

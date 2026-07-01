@@ -1,0 +1,34 @@
+{
+  "name": "Frequently Bought Together",
+  "settings": {
+    "header_display": {
+      "content": "Display"
+    },
+    "widget_title": {
+      "label": "Widget Title"
+    },
+    "cta_text": {
+      "label": "Button Text"
+    },
+    "header_appearance": {
+      "content": "Appearance"
+    },
+    "button_color": {
+      "label": "Button Color"
+    },
+    "show_savings": {
+      "label": "Show savings amount"
+    },
+    "header_products": {
+      "content": "Products"
+    },
+    "max_products": {
+      "label": "Maximum FBT products to show"
+    }
+  },
+  "presets": {
+    "default": {
+      "name": "Frequently Bought Together"
+    }
+  }
+}

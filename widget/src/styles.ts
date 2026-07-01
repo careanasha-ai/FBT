@@ -1,10 +1,17 @@
 /**
- * Widget CSS — injected as a <style> tag into the storefront.
- * Scoped under .fbt-widget to avoid conflicts with theme styles.
+ * Widget CSS — Theme App Extension version.
+ *
+ * Changes from ScriptTag version:
+ * - Button colour is driven by CSS custom property --fbt-btn-color
+ *   set inline by render.ts from the merchant's theme editor setting.
+ * - Skeleton loader styles live in the Liquid block (shown before JS loads).
+ * - All other styles remain scoped under .fbt-inner to avoid theme conflicts.
  */
 
 const CSS = `
-.fbt-widget {
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+
+#fbt-widget-root {
   margin: 24px 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
@@ -25,7 +32,8 @@ const CSS = `
   color: #202223;
 }
 
-/* Products row */
+/* ── Products row ────────────────────────────────────────────────────────── */
+
 .fbt-products-row {
   display: flex;
   align-items: flex-start;
@@ -40,22 +48,23 @@ const CSS = `
   color: #6d7175;
   align-self: center;
   padding: 0 4px;
+  user-select: none;
 }
 
-/* Product card */
+/* ── Product card ────────────────────────────────────────────────────────── */
+
 .fbt-product-card {
   position: relative;
   border: 2px solid #e1e3e5;
   border-radius: 6px;
   padding: 10px;
   width: 130px;
-  cursor: pointer;
   transition: border-color 0.15s;
   background: #fff;
 }
 
 .fbt-product-card.fbt-selected {
-  border-color: #008060;
+  border-color: var(--fbt-btn-color, #008060);
 }
 
 .fbt-checkbox {
@@ -64,7 +73,7 @@ const CSS = `
   left: 8px;
   width: 16px;
   height: 16px;
-  accent-color: #008060;
+  accent-color: var(--fbt-btn-color, #008060);
   cursor: pointer;
 }
 
@@ -75,6 +84,7 @@ const CSS = `
   border-radius: 4px;
   margin-bottom: 8px;
   margin-top: 4px;
+  display: block;
 }
 
 .fbt-product-title {
@@ -105,7 +115,8 @@ const CSS = `
   border-radius: 9999px;
 }
 
-/* Footer */
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+
 .fbt-footer {
   display: flex;
   align-items: center;
@@ -136,7 +147,7 @@ const CSS = `
 .fbt-price-discounted {
   font-size: 15px;
   font-weight: 700;
-  color: #008060;
+  color: var(--fbt-btn-color, #008060);
 }
 
 .fbt-savings {
@@ -148,30 +159,32 @@ const CSS = `
   font-weight: 500;
 }
 
-/* CTA Button */
+/* ── CTA Button ──────────────────────────────────────────────────────────── */
+
 .fbt-cta-btn {
   padding: 10px 20px;
-  background: #008060;
+  background: var(--fbt-btn-color, #008060);
   color: #ffffff;
   border: none;
   border-radius: 6px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: filter 0.15s;
   white-space: nowrap;
 }
 
 .fbt-cta-btn:hover:not(:disabled) {
-  background: #004c3f;
+  filter: brightness(0.88);
 }
 
 .fbt-cta-btn:disabled {
-  background: #c9cccf;
+  background: #c9cccf !important;
   cursor: not-allowed;
 }
 
-/* Responsive */
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
 @media (max-width: 480px) {
   .fbt-products-row {
     gap: 6px;
@@ -182,12 +195,21 @@ const CSS = `
   .fbt-product-image {
     height: 70px;
   }
+  .fbt-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 `;
 
 let injected = false;
 
-export function injectStyles(): void {
+/**
+ * Inject widget CSS into <head> once.
+ * buttonColor is applied via CSS custom property on the root element,
+ * set inline by render.ts — no need to regenerate the stylesheet per colour.
+ */
+export function injectStyles(_buttonColor?: string): void {
   if (injected) return;
   const style = document.createElement("style");
   style.id = "fbt-widget-styles";

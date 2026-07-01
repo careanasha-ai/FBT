@@ -1,0 +1,18 @@
+# Theme App Extension configuration
+# https://shopify.dev/docs/apps/online-store/theme-app-extensions
+
+api_version = "2024-07"
+
+[[extensions]]
+type = "ui_extension"
+name = "Frequently Bought Together"
+handle = "fbt-widget"
+
+[extensions.development]
+  # Local asset server during `shopify app dev`
+  resource = { url = "http://localhost:3000" }
+
+[[extensions.targeting]]
+  # Render as a section block on product pages
+  module = "./blocks/fbt-widget.liquid"
+  target = "section"

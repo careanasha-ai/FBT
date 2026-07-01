@@ -1,53 +1,52 @@
 /**
- * Widget DOM rendering — pure vanilla JS, no framework dependencies.
+ * Widget DOM rendering — Theme App Extension version.
+ *
+ * Key changes from ScriptTag version:
+ * - Renders INTO the existing #fbt-widget-root div (placed by Liquid block)
+ * - No findInsertionPoint() — placement is handled by the theme editor
+ * - Reads button colour from BlockSettings (merchant-configurable)
+ * - appUrl threaded through for analytics calls
+ * - showSavings and maxProducts respect merchant theme editor settings
  */
 
-import type { WidgetConfig, ProductItem } from "./types";
+import type { WidgetConfig, ProductItem, BlockSettings } from "./types";
 import { fetchProductData, sendAnalyticsEvent } from "./api";
 import { addBundleToCart } from "./cart";
 import { injectStyles } from "./styles";
-import { getSessionId, findInsertionPoint } from "./utils";
+import { getSessionId } from "./utils";
 import { formatPrice, calculateBundleTotal, applyDiscount } from "./currency";
 
-const WIDGET_ID = "fbt-widget-root";
-
 export async function renderWidget(
+  root: HTMLElement,
   config: WidgetConfig,
-  shopDomain: string
+  settings: BlockSettings
 ): Promise<void> {
-  // Avoid double-render
-  if (document.getElementById(WIDGET_ID)) return;
+  // Inject scoped CSS (idempotent)
+  injectStyles(settings.buttonColor);
 
-  // Inject CSS
-  injectStyles();
+  // Collect all product IDs — main first, then FBT products (capped by maxProducts)
+  const fbtIds = config.fbtProductIds.slice(0, settings.maxProducts);
+  const allIds = [config.mainProductId, ...fbtIds];
 
-  // Fetch product data for all FBT products
-  const allProductIds = [config.mainProductId, ...config.fbtProductIds];
-  const productData = await fetchProductData(allProductIds);
-
-  if (productData.length < 2) return; // Need at least main + 1 FBT product
+  const productData = await fetchProductData(allIds);
+  if (productData.length < 2) {
+    root.style.display = "none";
+    return;
+  }
 
   const products: ProductItem[] = productData.map((p) => ({
     ...p,
     isMain: p.id === config.mainProductId,
   }));
 
-  // Track selected products (all selected by default)
+  // All products selected by default
   const selectedIds = new Set(products.map((p) => p.id));
 
-  // Build widget DOM
-  const container = buildContainer(config, products, selectedIds, shopDomain);
+  // Initial render
+  mount(root, config, products, selectedIds, settings);
 
-  // Insert into page
-  const insertAfter = findInsertionPoint();
-  if (insertAfter) {
-    insertAfter.insertAdjacentElement("afterend", container);
-  } else {
-    document.body.appendChild(container);
-  }
-
-  // Fire view event
-  sendAnalyticsEvent(shopDomain, {
+  // Fire view analytics event
+  sendAnalyticsEvent(settings.appUrl, settings.shopDomain, {
     eventType: "view",
     groupId: config.groupId,
     productId: config.mainProductId,
@@ -55,42 +54,46 @@ export async function renderWidget(
   });
 }
 
-function buildContainer(
+// ─── Mount / Re-render ────────────────────────────────────────────────────────
+
+function mount(
+  root: HTMLElement,
   config: WidgetConfig,
   products: ProductItem[],
   selectedIds: Set<string>,
-  shopDomain: string
-): HTMLElement {
-  const root = document.createElement("div");
-  root.id = WIDGET_ID;
-  root.className = "fbt-widget";
+  settings: BlockSettings
+): void {
+  root.innerHTML = "";
 
-  function rerender() {
-    root.innerHTML = "";
-    root.appendChild(buildInner(config, products, selectedIds, shopDomain, rerender));
-  }
-
-  root.appendChild(buildInner(config, products, selectedIds, shopDomain, rerender));
-  return root;
-}
-
-function buildInner(
-  config: WidgetConfig,
-  products: ProductItem[],
-  selectedIds: Set<string>,
-  shopDomain: string,
-  rerender: () => void
-): HTMLElement {
-  const wrap = document.createElement("div");
-  wrap.className = "fbt-inner";
+  const inner = document.createElement("div");
+  inner.className = "fbt-inner";
 
   // Title
   const title = document.createElement("h3");
   title.className = "fbt-title";
-  title.textContent = config.widgetTitle;
-  wrap.appendChild(title);
+  title.textContent = settings.widgetTitle;
+  inner.appendChild(title);
 
   // Products row
+  inner.appendChild(
+    buildProductsRow(root, config, products, selectedIds, settings)
+  );
+
+  // Footer (pricing + CTA)
+  inner.appendChild(buildFooter(root, config, products, selectedIds, settings));
+
+  root.appendChild(inner);
+}
+
+// ─── Products Row ─────────────────────────────────────────────────────────────
+
+function buildProductsRow(
+  root: HTMLElement,
+  config: WidgetConfig,
+  products: ProductItem[],
+  selectedIds: Set<string>,
+  settings: BlockSettings
+): HTMLElement {
   const row = document.createElement("div");
   row.className = "fbt-products-row";
 
@@ -101,36 +104,31 @@ function buildInner(
       plus.textContent = "+";
       row.appendChild(plus);
     }
-
-    const card = buildProductCard(product, selectedIds, shopDomain, config, rerender);
-    row.appendChild(card);
+    row.appendChild(
+      buildProductCard(root, config, product, selectedIds, settings)
+    );
   });
 
-  wrap.appendChild(row);
-
-  // Summary + CTA
-  const footer = buildFooter(config, products, selectedIds, shopDomain);
-  wrap.appendChild(footer);
-
-  return wrap;
+  return row;
 }
 
 function buildProductCard(
+  root: HTMLElement,
+  config: WidgetConfig,
   product: ProductItem,
   selectedIds: Set<string>,
-  shopDomain: string,
-  config: WidgetConfig,
-  rerender: () => void
+  settings: BlockSettings
 ): HTMLElement {
   const card = document.createElement("div");
-  card.className = `fbt-product-card ${selectedIds.has(product.id) ? "fbt-selected" : ""}`;
+  card.className = `fbt-product-card${selectedIds.has(product.id) ? " fbt-selected" : ""}`;
 
-  // Checkbox (main product is always checked and disabled)
+  // Checkbox — main product always checked + disabled
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
   checkbox.className = "fbt-checkbox";
   checkbox.checked = selectedIds.has(product.id);
   checkbox.disabled = product.isMain;
+  checkbox.setAttribute("aria-label", `Include ${product.title}`);
 
   checkbox.addEventListener("change", () => {
     if (checkbox.checked) {
@@ -138,23 +136,27 @@ function buildProductCard(
     } else {
       selectedIds.delete(product.id);
     }
-    sendAnalyticsEvent(shopDomain, {
+
+    sendAnalyticsEvent(settings.appUrl, settings.shopDomain, {
       eventType: "click",
       groupId: config.groupId,
       productId: product.id,
       sessionId: getSessionId(),
     });
-    rerender();
+
+    // Re-render in place
+    mount(root, config, products(root), selectedIds, settings);
   });
 
   card.appendChild(checkbox);
 
-  // Image
+  // Product image
   if (product.image) {
     const img = document.createElement("img");
     img.src = product.image;
     img.alt = product.title;
     img.className = "fbt-product-image";
+    img.loading = "lazy";
     card.appendChild(img);
   }
 
@@ -170,7 +172,7 @@ function buildProductCard(
   priceEl.textContent = formatPrice(product.price / 100, product.currencyCode);
   card.appendChild(priceEl);
 
-  // Main badge
+  // "This item" badge on main product
   if (product.isMain) {
     const badge = document.createElement("span");
     badge.className = "fbt-main-badge";
@@ -181,28 +183,33 @@ function buildProductCard(
   return card;
 }
 
+// ─── Footer ───────────────────────────────────────────────────────────────────
+
 function buildFooter(
+  root: HTMLElement,
   config: WidgetConfig,
   products: ProductItem[],
   selectedIds: Set<string>,
-  shopDomain: string
+  settings: BlockSettings
 ): HTMLElement {
   const footer = document.createElement("div");
   footer.className = "fbt-footer";
 
-  const selectedProducts = products.filter((p) => selectedIds.has(p.id));
-  const totalCents = calculateBundleTotal(selectedProducts.map((p) => p.price));
+  const selected = products.filter((p) => selectedIds.has(p.id));
+  const totalCents = calculateBundleTotal(selected.map((p) => p.price));
   const totalDollars = totalCents / 100;
 
-  // Pricing summary
+  const hasDiscount =
+    settings.showSavings &&
+    config.discount &&
+    config.discount.type !== "none" &&
+    selectedIds.size >= config.discount.minItems;
+
+  // Price summary
   const priceWrap = document.createElement("div");
   priceWrap.className = "fbt-price-summary";
 
-  if (
-    config.discount &&
-    config.discount.type !== "none" &&
-    selectedIds.size >= config.discount.minItems
-  ) {
+  if (hasDiscount && config.discount) {
     const discounted = applyDiscount(
       totalDollars,
       config.discount.type,
@@ -210,43 +217,57 @@ function buildFooter(
     );
     const savings = totalDollars - discounted;
 
-    priceWrap.innerHTML = `
-      <span class="fbt-price-original">${formatPrice(totalDollars, "USD")}</span>
-      <span class="fbt-price-discounted">${formatPrice(discounted, "USD")}</span>
-      <span class="fbt-savings">Save ${formatPrice(savings, "USD")}</span>
-    `;
+    const original = document.createElement("span");
+    original.className = "fbt-price-original";
+    original.textContent = formatPrice(totalDollars, selected[0]?.currencyCode ?? "USD");
+
+    const discountedEl = document.createElement("span");
+    discountedEl.className = "fbt-price-discounted";
+    discountedEl.textContent = formatPrice(discounted, selected[0]?.currencyCode ?? "USD");
+
+    const savingsEl = document.createElement("span");
+    savingsEl.className = "fbt-savings";
+    savingsEl.textContent = `Save ${formatPrice(savings, selected[0]?.currencyCode ?? "USD")}`;
+
+    priceWrap.appendChild(original);
+    priceWrap.appendChild(discountedEl);
+    priceWrap.appendChild(savingsEl);
   } else {
-    priceWrap.innerHTML = `
-      <span class="fbt-price-total">Total: ${formatPrice(totalDollars, "USD")}</span>
-    `;
+    const totalEl = document.createElement("span");
+    totalEl.className = "fbt-price-total";
+    totalEl.textContent = `Total: ${formatPrice(totalDollars, selected[0]?.currencyCode ?? "USD")}`;
+    priceWrap.appendChild(totalEl);
   }
 
   footer.appendChild(priceWrap);
 
-  // CTA Button
+  // CTA button
   const btn = document.createElement("button");
   btn.className = "fbt-cta-btn";
-  btn.textContent = config.ctaText;
+  btn.textContent = settings.ctaText;
   btn.disabled = selectedIds.size === 0;
+  btn.style.setProperty("--fbt-btn-color", settings.buttonColor);
 
   btn.addEventListener("click", async () => {
     btn.disabled = true;
-    btn.textContent = "Adding...";
+    btn.textContent = "Adding…";
 
     const toAdd = products.filter((p) => selectedIds.has(p.id));
 
     try {
       await addBundleToCart(toAdd, config);
-      sendAnalyticsEvent(shopDomain, {
+
+      sendAnalyticsEvent(settings.appUrl, settings.shopDomain, {
         eventType: "add_to_cart",
         groupId: config.groupId,
         productId: config.mainProductId,
         sessionId: getSessionId(),
         metadata: { productCount: toAdd.length },
       });
-      btn.textContent = "Added! ✓";
+
+      btn.textContent = "Added ✓";
       setTimeout(() => {
-        btn.textContent = config.ctaText;
+        btn.textContent = settings.ctaText;
         btn.disabled = false;
       }, 2000);
     } catch {
@@ -257,4 +278,18 @@ function buildFooter(
 
   footer.appendChild(btn);
   return footer;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Re-read current products from the rendered cards.
+ * Used to preserve product list across re-renders triggered by checkbox changes.
+ * In practice the product list is stable — this avoids closing over a stale array.
+ */
+function products(root: HTMLElement): ProductItem[] {
+  // Products are stored as data on the card elements
+  return Array.from(root.querySelectorAll<HTMLElement>(".fbt-product-card")).map(
+    (card) => JSON.parse(card.dataset.product ?? "{}")
+  );
 }
