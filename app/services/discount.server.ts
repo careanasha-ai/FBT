@@ -1,98 +1,98 @@
-import { prisma } from "~/db/client";
-import type { DiscountRuleInput } from "~/utils/validation";
+import type { DiscountTier } from "@prisma/client";
 
-// ─── Queries ──────────────────────────────────────────────────────────────────
+// ─── Tier Resolution ──────────────────────────────────────────────────────────
 
 /**
- * Get the discount rule for an FBT group
+ * Find the best applicable discount tier for a given item count.
+ * Tiers are sorted by minItems descending — highest qualifying tier wins.
  */
-export async function getDiscountRule(groupId: number) {
-  return prisma.discountRule.findUnique({
-    where: { groupId },
-  });
+export function resolveDiscountTier(
+  tiers: DiscountTier[],
+  itemCount: number
+): DiscountTier | null {
+  const sorted = [...tiers]
+    .filter((t) => itemCount >= t.minItems)
+    .sort((a, b) => b.minItems - a.minItems);
+  return sorted[0] ?? null;
 }
 
 /**
- * List all discount rules for a shop (via groups)
+ * Calculate the discounted total for a bundle.
  */
-export async function listDiscountRules(shopId: number) {
-  return prisma.discountRule.findMany({
-    where: {
-      group: { shopId },
-    },
-    include: {
-      group: {
-        select: { id: true, productId: true, title: true },
-      },
-    },
-    orderBy: { updatedAt: "desc" },
-  });
-}
+export function calculateDiscountedTotal(
+  subtotalCents: number,
+  tier: DiscountTier | null
+): { discountedTotal: number; savingsCents: number } {
+  if (!tier || tier.discountType === "none") {
+    return { discountedTotal: subtotalCents, savingsCents: 0 };
+  }
 
-// ─── Mutations ────────────────────────────────────────────────────────────────
+  const value = Number(tier.discountValue);
 
-/**
- * Upsert a discount rule for an FBT group
- */
-export async function upsertDiscountRule(
-  groupId: number,
-  input: DiscountRuleInput
-) {
-  return prisma.discountRule.upsert({
-    where: { groupId },
-    update: {
-      discountType: input.discountType,
-      discountValue: input.discountValue,
-      minItems: input.minItems,
-      updatedAt: new Date(),
-    },
-    create: {
-      groupId,
-      discountType: input.discountType,
-      discountValue: input.discountValue,
-      minItems: input.minItems,
-    },
-  });
+  if (tier.discountType === "percentage") {
+    const savings = Math.round(subtotalCents * (value / 100));
+    return { discountedTotal: subtotalCents - savings, savingsCents: savings };
+  }
+
+  if (tier.discountType === "fixed") {
+    const savings = Math.min(Math.round(value * 100), subtotalCents);
+    return { discountedTotal: subtotalCents - savings, savingsCents: savings };
+  }
+
+  if (tier.discountType === "price") {
+    // Flat bundle price — value is in dollars
+    const bundlePriceCents = Math.round(value * 100);
+    const savings = Math.max(0, subtotalCents - bundlePriceCents);
+    return { discountedTotal: bundlePriceCents, savingsCents: savings };
+  }
+
+  return { discountedTotal: subtotalCents, savingsCents: 0 };
 }
 
 /**
- * Delete a discount rule
+ * Build the "next tier nudge" message shown in the widget.
+ * e.g. "Add 1 more item to save 20%!"
  */
-export async function deleteDiscountRule(groupId: number) {
-  return prisma.discountRule.delete({
-    where: { groupId },
-  }).catch(() => null); // Ignore if not found
+export function buildNudgeMessage(
+  tiers: DiscountTier[],
+  currentItemCount: number
+): string | null {
+  const nextTier = tiers
+    .filter((t) => t.minItems > currentItemCount)
+    .sort((a, b) => a.minItems - b.minItems)[0];
+
+  if (!nextTier) return null;
+
+  const needed = nextTier.minItems - currentItemCount;
+  const label =
+    nextTier.discountType === "percentage"
+      ? `${nextTier.discountValue}% off`
+      : nextTier.discountType === "fixed"
+      ? `$${nextTier.discountValue} off`
+      : nextTier.discountType === "price"
+      ? `bundle price of $${nextTier.discountValue}`
+      : "a discount";
+
+  return `Add ${needed} more item${needed > 1 ? "s" : ""} to save ${label}!`;
 }
 
-// ─── Discount Code Generation ─────────────────────────────────────────────────
+/**
+ * Format a discount tier for display in the admin UI.
+ */
+export function formatTierLabel(tier: DiscountTier): string {
+  const value = Number(tier.discountValue);
+  if (tier.discountType === "percentage") return `${value}% off`;
+  if (tier.discountType === "fixed") return `$${value} off`;
+  if (tier.discountType === "price") return `Bundle price: $${value}`;
+  return "No discount";
+}
 
 /**
- * Generate a unique discount code for a bundle session.
- * In Phase 1 we use cart attributes + automatic discounts via Shopify.
- * This helper generates a deterministic code for the session.
+ * Generate a unique discount code for a bundle session (Phase 1 cart attributes approach).
  */
 export function generateBundleDiscountCode(
-  shopDomain: string,
   groupId: number,
   sessionId: string
 ): string {
-  const prefix = "FBT";
-  const suffix = `${groupId}-${sessionId.slice(0, 6).toUpperCase()}`;
-  return `${prefix}-${suffix}`;
-}
-
-/**
- * Format discount label for display
- */
-export function formatDiscountLabel(
-  discountType: string,
-  discountValue: number
-): string {
-  if (discountType === "percentage") {
-    return `${discountValue}% off`;
-  }
-  if (discountType === "fixed") {
-    return `$${discountValue} off`;
-  }
-  return "No discount";
+  return `FBT-${groupId}-${sessionId.slice(0, 6).toUpperCase()}`;
 }

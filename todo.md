@@ -1,15 +1,22 @@
-# Tasks - TAE Migration
-- [ ] 1. Add shopify.extension.toml
-- [ ] 2. Add fbt-widget.liquid block
-- [ ] 3. Add extension locales
-- [ ] 4. Rewrite widget/src/index.ts (data attrs, no DOM traversal)
-- [ ] 5. Rewrite widget/src/utils.ts (remove DOM hacks)
-- [ ] 6. Rewrite widget/vite.config.ts (extension asset output path)
-- [ ] 7. Update app/services/shopify.server.ts (remove ScriptTag functions)
-- [ ] 8. Update app/routes/auth/callback.tsx (remove ensureScriptTag)
-- [ ] 9. Update app/routes/app/settings/_index.tsx (remove reinstall section)
-- [ ] 10. Update package.json (add extension build/deploy scripts)
-- [ ] 11. Update .gitignore (extension dist)
-- [ ] 12. Update docs/architecture.md (TAE diagram)
-- [ ] 13. Update README.md
-- [ ] 14. Commit and push
+# Tasks - Phase 1.5 + AI Bundles
+- [x] 1. Prisma schema — add bundle_type, display_mode, discount_tiers, gift_rules, shop_settings
+- [x] 2. DB seed — update for new schema
+- [x] 3. Validation schemas — extend Zod for new fields
+- [x] 4. fbt.server.ts — support bundle_type, flexible, min/max select
+- [x] 5. discount.server.ts — tiered discount logic
+- [x] 6. gift.server.ts — gift with purchase service
+- [x] 7. ai.server.ts — thematic bundle analysis (product catalog → themed bundles)
+- [x] 8. API route /api/fbt — update for new bundle types
+- [x] 9. API route /api/gift — CRUD for gift rules
+- [x] 10. API route /api/ai/suggest — trigger AI bundle analysis
+- [x] 11. Admin UI — FBT group form (stepped, type-aware)
+- [x] 12. Admin UI — Gift With Purchase page
+- [x] 13. Admin UI — AI Suggestions page
+- [x] 14. Admin UI — nav update (add Gift, AI pages)
+- [x] 15. Widget — flexible bundle (pick N from pool)
+- [x] 16. Widget — tiered discount live recalculation
+- [x] 17. Widget — free shipping progress bar
+- [x] 18. Widget — post-add-to-cart popup mode
+- [x] 19. Widget — gift progress bar
+- [x] 20. Liquid block — update schema for new settings
+- [x] 21. Commit and push

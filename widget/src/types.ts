@@ -1,46 +1,60 @@
 /**
- * Shared types for the FBT widget — Theme App Extension version
+ * Shared types for the FBT widget — Phase 1.5
  */
+
+// ─── Server config (from /api/widget) ────────────────────────────────────────
+
+export interface DiscountTierConfig {
+  minItems: number;
+  discountType: "percentage" | "fixed" | "price" | "none";
+  discountValue: number;
+}
+
+export interface GiftRuleConfig {
+  ruleId: number;
+  giftVariantId: string;
+  giftTitle: string;
+  giftImageUrl: string | null;
+  thresholdType: "cart_value" | "item_count" | "fbt_add";
+  thresholdValue: number;
+  showProgressBar: boolean;
+  progressMessage: string;
+}
 
 export interface WidgetConfig {
   groupId: number;
+  bundleType: "fixed" | "flexible" | "volume";
+  displayMode: "inline" | "popup" | "both";
   mainProductId: string;
   fbtProductIds: string[];
-  discount: {
-    type: "percentage" | "fixed" | "none";
-    value: number;
-    minItems: number;
-  } | null;
+  minSelect: number;
+  maxSelect: number;
+  discountTiers: DiscountTierConfig[];
+  giftRules: GiftRuleConfig[];
   widgetTitle: string;
   ctaText: string;
+  aiTheme: string | null;
+  aiRationale: string | null;
 }
 
-/**
- * Settings read from the Liquid block's data attributes.
- * These are set by the merchant in the Shopify theme editor.
- */
+// ─── Block settings (from Liquid data-* attrs) ────────────────────────────────
+
 export interface BlockSettings {
-  appUrl: string;           // data-app-url — Railway app base URL
-  shopDomain: string;       // data-shop — e.g. mystore.myshopify.com
-  productId: string;        // data-product — gid://shopify/Product/123
-  widgetTitle: string;      // data-widget-title
-  ctaText: string;          // data-cta-text
-  buttonColor: string;      // data-button-color — hex colour
-  showSavings: boolean;     // data-show-savings
-  maxProducts: number;      // data-max-products — 1–4
+  appUrl: string;
+  shopDomain: string;
+  productId: string;
+  widgetTitle: string;
+  ctaText: string;
+  buttonColor: string;
+  showSavings: boolean;
+  maxProducts: number;
 }
 
-export interface WidgetState {
-  config: WidgetConfig;
-  products: ProductItem[];
-  selectedIds: Set<string>;
-  isLoading: boolean;
-  isAddingToCart: boolean;
-}
+// ─── Widget state ─────────────────────────────────────────────────────────────
 
 export interface ProductItem {
-  id: string;               // GID
-  variantId: string;        // GID
+  id: string;
+  variantId: string;
   title: string;
   handle: string;
   image: string | null;
@@ -48,4 +62,22 @@ export interface ProductItem {
   currencyCode: string;
   availableForSale: boolean;
   isMain: boolean;
+}
+
+export interface DiscountState {
+  activeTier: DiscountTierConfig | null;
+  nextTier: DiscountTierConfig | null;
+  nudgeMessage: string | null;
+  discountedTotalCents: number;
+  savingsCents: number;
+}
+
+export interface GiftState {
+  ruleId: number;
+  giftTitle: string;
+  giftImageUrl: string | null;
+  isEligible: boolean;
+  progressPercent: number;
+  amountRemaining: number;
+  progressMessage: string;
 }

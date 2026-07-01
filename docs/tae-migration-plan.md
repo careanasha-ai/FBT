@@ -1,32 +1,28 @@
-# TAE Migration Plan
+# TAE Migration Plan (ScriptTag → Theme App Extension)
 
-## Files REMOVED
-- app/services/shopify.server.ts → remove ensureScriptTag, removeScriptTag
-- app/routes/auth/callback.tsx → remove ensureScriptTag call
-- app/routes/app/settings/_index.tsx → remove "Reinstall Widget Script" section
-- widget/vite.config.ts → replace with extensions build config
-- widget/src/utils.ts → remove findInsertionPoint, findAddToCartForm (no longer needed)
-- widget/src/index.ts → rewrite entry (reads from DOM data attrs, no DOM traversal)
+## Completed in commit dba328c
 
-## Files ADDED
-- extensions/fbt-widget/shopify.extension.toml
-- extensions/fbt-widget/blocks/fbt-widget.liquid
-- extensions/fbt-widget/assets/fbt-widget.js (built output — gitignored in dev, built on deploy)
-- extensions/fbt-widget/locales/en.default.json
+### Removed
+- ScriptTag registration from OAuth callback
+- ensureScriptTag / removeScriptTag from shopify.server.ts
+- read_script_tags / write_script_tags scopes
+- "Reinstall Widget Script" button from settings page
+- findInsertionPoint / findAddToCartForm DOM hacks from widget
+- ShopifyAnalytics.meta dependency for product ID detection
+- Build-time __APP_URL__ constant in widget
 
-## Files UNCHANGED
-- All prisma/ files
-- All app/services/ except shopify.server.ts
-- All app/routes/ except auth/callback.tsx, app/settings/_index.tsx
-- All app/utils/
-- All app/db/
-- widget/src/api.ts, cart.ts, currency.ts, render.ts, styles.ts, types.ts
+### Added
+- extensions/fbt-widget/ directory (TAE)
+- blocks/fbt-widget.liquid — server-rendered Liquid block
+- assets/fbt-widget.js — widget JS served from Shopify Fastly CDN
+- locales/en.default.json — theme editor i18n
+- shopify.extension.toml — extension manifest
+- shopify:dev / shopify:deploy npm scripts
 
-## Key behavioural changes
-- ScriptTag registration removed from OAuth callback
-- Widget JS reads shop + productId from data attributes on the block div
-- Widget JS reads settings (title, CTA, button colour) from data attributes
-- No more /api/widget?shop=&product= cold-start on every page load
-  (data attrs pre-populated by Liquid at render time — still calls /api/widget for FBT product list)
-- shopify.extension.toml declares the extension, targets product pages
-- Merchant places block in theme editor — no auto-injection
+### Key behavioural changes
+- Widget reads shop + productId from data-* attributes (set by Liquid)
+- Widget renders into #fbt-widget-root (placed by merchant in theme editor)
+- appUrl is a runtime param from data-app-url (no rebuild needed per env)
+- Button colour driven by CSS custom property --fbt-btn-color
+- Merchant controls placement, title, CTA, colour in theme editor
+- Built for Shopify badge eligible

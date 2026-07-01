@@ -1,186 +1,119 @@
-# Frequently Bought Together — Architecture Diagram (Theme App Extension)
+# FBT App — Architecture (Phase 1.5)
+
+See the inline diagrams below for the full system layout.
+
+## Component Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          SHOPIFY MERCHANT STORE                             │
-│                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │              Product Page (Online Store 2.0 Theme)                   │   │
-│  │                                                                     │   │
-│  │   ┌─────────────────────────────────────────────────────────────┐  │   │
-│  │   │         FBT Block (Theme App Extension — Liquid)             │  │   │
-│  │   │                                                             │  │   │
-│  │   │  Rendered server-side by Shopify at page request time       │  │   │
-│  │   │                                                             │  │   │
-│  │   │  <div id="fbt-widget-root"                                  │  │   │
-│  │   │    data-shop="store.myshopify.com"                          │  │   │
-│  │   │    data-product="gid://shopify/Product/123"                 │  │   │
-│  │   │    data-app-url="https://app.railway.app"                   │  │   │
-│  │   │    data-widget-title="Frequently Bought Together"           │  │   │
-│  │   │    data-button-color="#008060"                              │  │   │
-│  │   │    ...merchant theme editor settings...>                    │  │   │
-│  │   │    [skeleton loader]                                        │  │   │
-│  │   │  </div>                                                     │  │   │
-│  │   │  <script src="fbt-widget.js" defer>                        │  │   │
-│  │   │                                                             │  │   │
-│  │   │  JS hydrates → fetches FBT config → renders widget         │  │   │
-│  │   │                                                             │  │   │
-│  │   │  [Main Product]  +  [FBT Product 1]  +  [FBT Product 2]    │  │   │
-│  │   │  ☑ Product A    ☑ Product B    ☑ Product C                 │  │   │
-│  │   │  $29.99         $14.99         $9.99                        │  │   │
-│  │   │  Bundle Total: $49.99  (Save 10%)  [Add All to Cart]       │  │   │
-│  │   └─────────────────────────────────────────────────────────────┘  │   │
-│  │                                                                     │   │
-│  │   Shopify Cart AJAX API (/cart/add.js) ──────────────────────────► │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
-│                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                    Shopify Theme Editor                              │   │
-│  │                                                                     │   │
-│  │  Merchant drags FBT block → configures title, colour, CTA text     │   │
-│  │  Block settings written to theme JSON → served by Shopify CDN      │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────────┘
-                │                                        │
-                │ OAuth Install Flow                     │ Webhooks
-                │ (Admin API)                            │ (orders/paid, etc.)
-                ▼                                        ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        FBT APP  (Railway — Node.js)                         │
-│                                                                             │
-│  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │                    React Router v7  (Full-Stack)                      │  │
-│  │                                                                      │  │
-│  │  ┌─────────────────────────┐   ┌──────────────────────────────────┐ │  │
-│  │  │     Admin UI (React)    │   │       API Routes (Server)        │ │  │
-│  │  │                         │   │                                  │ │  │
-│  │  │  /app/dashboard         │   │  /api/fbt          (CRUD)        │ │  │
-│  │  │  /app/products          │   │  /api/analytics    (events)      │ │  │
-│  │  │  /app/analytics         │   │  /api/discounts    (rules)       │ │  │
-│  │  │  /app/settings          │   │  /api/widget       (config)      │ │  │
-│  │  │  /app/discounts         │   │  /webhooks/orders  (paid)        │ │  │
-│  │  └─────────────────────────┘   │  /auth/callback    (OAuth)       │ │  │
-│  │                                └──────────────────────────────────┘ │  │
-│  │                                                                      │  │
-│  │  ┌──────────────────────────────────────────────────────────────┐   │  │
-│  │  │                    Service Layer                              │   │  │
-│  │  │                                                              │   │  │
-│  │  │  ShopifyService  │  FBTService  │  DiscountService           │   │  │
-│  │  │  AnalyticsService│  WidgetService│  AIService (Phase 2)      │   │  │
-│  │  └──────────────────────────────────────────────────────────────┘   │  │
-│  └──────────────────────────────────────────────────────────────────────┘  │
-│                                                                             │
-│  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │                         Data Layer                                   │  │
-│  │                                                                      │  │
-│  │   PostgreSQL (Railway)          Redis (Railway — optional cache)     │  │
-│  │   ┌────────────────────┐        ┌──────────────────────────────┐    │  │
-│  │   │  shops             │        │  Session cache               │    │  │
-│  │   │  fbt_groups        │        │  Widget config cache         │    │  │
-│  │   │  fbt_products      │        │  Analytics buffer            │    │  │
-│  │   │  discount_rules    │        └──────────────────────────────┘    │  │
-│  │   │  analytics_events  │                                            │  │
-│  │   │  sessions          │                                            │  │
-│  │   └────────────────────┘                                            │  │
-│  └──────────────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────────┘
-                │
-                │ Shopify Admin API (GraphQL)
-                │ Shopify Storefront AJAX API (/products.json, /cart/add.js)
+┌─────────────────────────────────────────────────────────────────┐
+│                    SHOPIFY MERCHANT STORE                        │
+│                                                                 │
+│  Product Page (OS 2.0 Theme)                                    │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  FBT Block (Theme App Extension — Liquid)                │   │
+│  │  data-shop, data-product, data-app-url, data-*settings  │   │
+│  │  [skeleton] → fbt-widget.js hydrates                    │   │
+│  │                                                         │   │
+│  │  Fixed Bundle:    [A] + [B] + [C]  → tiered discount    │   │
+│  │  Flexible Bundle: [A] + pick 2 of [B,C,D,E]            │   │
+│  │  Popup Mode:      fires after ATC click                 │   │
+│  │  Gift Bar:        "Add $15 more for a free Travel Pouch"│   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  Theme Editor: merchant configures block settings              │
+└─────────────────────────────────────────────────────────────────┘
+                │ OAuth + Admin API          │ Webhooks
+                ▼                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  FBT APP (Railway — Node.js)                     │
+│                                                                 │
+│  React Router v7                                                │
+│  ┌──────────────────────┐  ┌──────────────────────────────┐    │
+│  │  Admin UI            │  │  API Routes                  │    │
+│  │  /app/dashboard      │  │  GET  /api/widget            │    │
+│  │  /app/products       │  │  POST /api/analytics         │    │
+│  │  /app/gifts          │  │  POST /api/gift              │    │
+│  │  /app/analytics      │  │  GET|POST /api/ai/suggest    │    │
+│  │  /app/ai             │  │  POST /webhooks/*            │    │
+│  │  /app/settings       │  │  GET  /health                │    │
+│  └──────────────────────┘  └──────────────────────────────┘    │
+│                                                                 │
+│  Services                                                       │
+│  shopify │ auth │ fbt │ discount │ gift │ ai │ widget │ webhook │
+│                                                                 │
+│  PostgreSQL (Railway)                                           │
+│  shops │ fbt_groups │ fbt_products │ discount_tiers            │
+│  gift_rules │ shop_settings │ ai_suggestions                   │
+│  ai_credit_ledger │ analytics_events │ sessions                │
+└─────────────────────────────────────────────────────────────────┘
+                │ GPT-4o API
                 ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         SHOPIFY PLATFORM                                    │
-│                                                                             │
-│   Admin API          Storefront AJAX      Theme CDN        Webhook API      │
-│   (products,         (/cart/add.js,       (fbt-widget.js   (order events)   │
-│    discounts,        /products.json)       served by                        │
-│    metafields)                             Shopify Fastly)                  │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  OpenAI                                                         │
+│  Product catalog → thematic bundle suggestions                  │
+│  "Massage Therapist Bundle", "Home Office Setup", etc.          │
+└─────────────────────────────────────────────────────────────────┘
 
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    THEME APP EXTENSION (Shopify CDN)                        │
-│                                                                             │
-│   extensions/fbt-widget/                                                    │
-│   ├── blocks/fbt-widget.liquid   ← Liquid block (rendered server-side)      │
-│   ├── assets/fbt-widget.js       ← Built widget bundle (Shopify Fastly CDN) │
-│   ├── locales/en.default.json    ← i18n strings for theme editor UI         │
-│   └── shopify.extension.toml     ← Extension manifest                       │
-│                                                                             │
-│   Deployed via: shopify app deploy                                          │
-│   Activated by: Merchant adds block in theme editor                         │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  Theme App Extension (Shopify Fastly CDN)                       │
+│  extensions/fbt-widget/                                         │
+│  ├── blocks/fbt-widget.liquid   (server-rendered Liquid block)  │
+│  ├── assets/fbt-widget.js       (built IIFE widget bundle)      │
+│  └── locales/en.default.json    (theme editor i18n)             │
+└─────────────────────────────────────────────────────────────────┘
+```
 
+## AI Bundle Analysis Flow
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TAE DATA FLOW — Widget Load (vs ScriptTag)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+Merchant clicks "Run Analysis" (costs 1 credit)
+  │
+  ▼
+fetchShopProducts() — Admin GraphQL API, up to 250 active products
+  │
+  ▼
+buildAnalysisPrompt() — compact catalog JSON + merchandising instructions
+  │
+  ▼
+OpenAI GPT-4o (json_object response format)
+  │
+  ▼
+validateBundles() — filter invalid GIDs, enforce min 2 products
+  │
+  ▼
+prisma.aiSuggestion.create() × N — saved as "pending"
+  │
+  ▼
+debitAiCredits() — 1 credit debited from ledger
+  │
+  ▼
+Admin UI shows suggestions with theme + rationale + product IDs
+  │
+  ├── Merchant approves → createFbtGroupFromAiSuggestion()
+  │                        → FBT group created, suggestion marked "approved"
+  └── Merchant rejects  → suggestion marked "rejected"
+```
 
-  ScriptTag (removed)                Theme App Extension (current)
-  ───────────────────                ─────────────────────────────
-  Page loads                         Page loads
-    │                                  │
-    ▼                                  ▼
-  Shopify injects <script>           Shopify renders Liquid block
-  from your Railway CDN                server-side (zero extra request)
-    │                                  │
-    ▼                                  ▼
-  Script loads (network req #1)      Block HTML in page immediately
-    │                                  │
-    ▼                                  ▼
-  JS reads ShopifyAnalytics.meta     JS reads data-* attributes
-  (fragile, theme-dependent)         (reliable, set by Liquid)
-    │                                  │
-    ▼                                  ▼
-  GET /api/widget (network req #2)   GET /api/widget (network req #1)
-    │                                  │
-    ▼                                  ▼
-  Widget renders                     Widget renders
-    │                                  │
-    ▼                                  ▼
-  DOM traversal to find              Renders into #fbt-widget-root
-  insertion point (fragile)          (exact position set by merchant)
+## Discount Tier Resolution
 
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHASE 1 DATA FLOW — Admin FBT Configuration
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  Merchant opens App in Shopify Admin
-        │
-        ▼
-  OAuth → Session stored in PostgreSQL
-        │
-        ▼
-  Admin UI loads /app/products
-        │
-        ▼
-  Merchant searches & selects main product
-        │
-        ▼
-  Merchant picks 1–4 FBT products
-        │
-        ▼
-  Merchant sets discount rule (%, fixed, none)
-        │
-        ▼
-  POST /api/fbt → saves fbt_group + fbt_products
-        │
-        ▼
-  Widget live on storefront (where merchant placed the TAE block) ✓
-
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHASE 2 (Future) — AI Credits
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  Order history + product catalog
-        │
-        ▼
-  AI Service (OpenAI / custom model)
-        │
-        ▼
-  Auto-suggest FBT groups (merchant approves)
-        │
-        ▼
-  Credit deducted from merchant balance
+```
+Customer selects items → selectedCount
+  │
+  ▼
+resolveActiveTier(tiers, selectedCount)
+  → highest tier where minItems ≤ selectedCount
+  │
+  ▼
+applyTier(subtotalCents, activeTier)
+  → percentage: savings = subtotal × (value/100)
+  → fixed:      savings = min(value×100, subtotal)
+  → price:      discountedTotal = value×100 (flat bundle price)
+  │
+  ▼
+resolveNextTier(tiers, selectedCount)
+  → lowest tier where minItems > selectedCount
+  │
+  ▼
+buildNudgeMessage(nextTier, selectedCount)
+  → "Add 1 more item to save 20%!"
 ```

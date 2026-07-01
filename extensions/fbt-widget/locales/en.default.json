@@ -24,6 +24,13 @@
     },
     "max_products": {
       "label": "Maximum FBT products to show"
+    },
+    "header_advanced": {
+      "content": "Advanced"
+    },
+    "show_ai_badge": {
+      "label": "Show AI suggestion badge",
+      "info": "Displays a small badge on AI-generated bundles"
     }
   },
   "presets": {

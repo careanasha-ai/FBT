@@ -9,11 +9,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 const NAV_ITEMS = [
-  { to: "dashboard", label: "Dashboard", icon: "📊" },
-  { to: "products", label: "FBT Groups", icon: "🔗" },
-  { to: "discounts", label: "Discounts", icon: "🏷️" },
-  { to: "analytics", label: "Analytics", icon: "📈" },
-  { to: "settings", label: "Settings", icon: "⚙️" },
+  { to: "dashboard",  label: "Dashboard",          icon: "📊" },
+  { to: "products",   label: "FBT Groups",          icon: "🔗" },
+  { to: "gifts",      label: "Gift With Purchase",  icon: "🎁" },
+  { to: "analytics",  label: "Analytics",           icon: "📈" },
+  { to: "ai",         label: "AI Suggestions",      icon: "🤖" },
+  { to: "settings",   label: "Settings",            icon: "⚙️" },
 ];
 
 export default function AppLayout() {
@@ -23,16 +24,19 @@ export default function AppLayout() {
   return (
     <div className="flex min-h-screen bg-shopify-surface">
       {/* Sidebar */}
-      <aside className="w-56 bg-white border-r border-shopify-border flex flex-col">
+      <aside className="w-60 bg-white border-r border-shopify-border flex flex-col flex-shrink-0">
         {/* Logo */}
         <div className="px-4 py-5 border-b border-shopify-border">
-          <span className="font-bold text-shopify-green text-base leading-tight">
-            Frequently<br />Bought Together
+          <span className="font-bold text-shopify-green text-sm leading-tight block">
+            Frequently
+          </span>
+          <span className="font-bold text-shopify-green text-sm leading-tight block">
+            Bought Together
           </span>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 py-4 px-2 space-y-1">
+        <nav className="flex-1 py-4 px-2 space-y-0.5">
           {NAV_ITEMS.map((item) => (
             <NavLink
               key={item.to}
@@ -45,15 +49,15 @@ export default function AppLayout() {
                 }`
               }
             >
-              <span>{item.icon}</span>
+              <span className="text-base">{item.icon}</span>
               <span>{item.label}</span>
             </NavLink>
           ))}
         </nav>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-shopify-border">
-          <p className="text-xs text-shopify-text-subdued">v0.1.0</p>
+        <div className="px-4 py-3 border-t border-shopify-border space-y-1">
+          <p className="text-xs text-shopify-text-subdued">v0.2.0 — Phase 1.5</p>
         </div>
       </aside>
 

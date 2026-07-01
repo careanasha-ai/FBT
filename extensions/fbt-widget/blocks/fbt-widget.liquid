@@ -1,8 +1,6 @@
 {% comment %}
   Frequently Bought Together — Theme App Extension Block
-  Target: Product pages (section block)
-  Merchant places this block in the theme editor on the product page template.
-  All widget settings are configurable directly in the theme editor sidebar.
+  Phase 1.5: supports fixed, flexible, volume bundles + gift progress bar
 {% endcomment %}
 
 {% if product %}
@@ -18,7 +16,7 @@
   data-max-products="{{ block.settings.max_products }}"
   {{ block.shopify_attributes }}
 >
-  {% comment %} Loading skeleton — replaced by JS once widget data loads {% endcomment %}
+  {% comment %} Skeleton loader — replaced by JS once widget data loads {% endcomment %}
   <div class="fbt-skeleton" aria-hidden="true">
     <div class="fbt-skeleton__title"></div>
     <div class="fbt-skeleton__products">
@@ -32,7 +30,6 @@
 </div>
 
 <style>
-  /* Skeleton loader styles — scoped to this block */
   #fbt-widget-root .fbt-skeleton {
     padding: 20px;
     border: 1px solid #e1e3e5;
@@ -42,7 +39,7 @@
   }
   #fbt-widget-root .fbt-skeleton__title {
     height: 16px;
-    width: 200px;
+    width: 220px;
     background: #e1e3e5;
     border-radius: 4px;
     margin-bottom: 16px;
@@ -65,7 +62,7 @@
   }
   @keyframes fbt-pulse {
     0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    50%       { opacity: 0.5; }
   }
 </style>
 
@@ -119,9 +116,20 @@
       "id": "max_products",
       "label": "t:settings.max_products.label",
       "min": 1,
-      "max": 4,
+      "max": 12,
       "step": 1,
-      "default": 3
+      "default": 4
+    },
+    {
+      "type": "header",
+      "content": "t:settings.header_advanced.content"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_ai_badge",
+      "label": "t:settings.show_ai_badge.label",
+      "default": true,
+      "info": "t:settings.show_ai_badge.info"
     }
   ],
   "presets": [
