@@ -2,7 +2,6 @@ import crypto from "crypto";
 
 import { prisma } from "~/db/client";
 import { uninstallShop } from "./auth.server";
-import { removeScriptTag } from "./shopify.server";
 import { recordEvent } from "./analytics.server";
 
 // ─── Webhook Verification ─────────────────────────────────────────────────────
@@ -44,21 +43,7 @@ export function parseWebhookBody<T = unknown>(bodyText: string): T {
  */
 export async function handleAppUninstalled(shopDomain: string): Promise<void> {
   console.log(`[Webhook] App uninstalled: ${shopDomain}`);
-
-  // Get shop for script tag removal
-  const shop = await prisma.shop.findUnique({
-    where: { shopDomain },
-    select: { accessToken: true },
-  });
-
-  if (shop?.accessToken) {
-    try {
-      await removeScriptTag(shopDomain, shop.accessToken);
-    } catch (err) {
-      console.error("[Webhook] Failed to remove script tag:", err);
-    }
-  }
-
+  // Widget delivered via Theme App Extension — no ScriptTag to remove
   await uninstallShop(shopDomain);
 }
 
