@@ -1,11 +1,11 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm ci && npm run build && npm run db:migrate"
+buildCommand = "npm install --prefer-offline && npm run build"
 
 [deploy]
-startCommand = "npm start"
+startCommand = "npm run db:migrate && npm start"
 healthcheckPath = "/health"
-healthcheckTimeout = 30
+healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 

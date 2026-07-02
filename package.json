@@ -1,11 +1,11 @@
 {
   "name": "fbt-app",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "react-router dev",
-    "build": "react-router build && npm run widget:build",
+    "build": "npm run db:generate && react-router build && npm run widget:build",
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "tsc",
     "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
