@@ -3,6 +3,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from "react-router";
 
 import { requireShop } from "~/services/auth.server";
 import { listFbtGroups, toggleFbtGroup, deleteFbtGroup } from "~/services/fbt.server";
+import { formatTierLabel } from "~/services/discount.server";
 import { parseGid } from "~/utils/shopify";
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -29,6 +30,18 @@ export async function action({ request }: ActionFunctionArgs) {
   return {};
 }
 
+const BUNDLE_TYPE_LABELS: Record<string, string> = {
+  fixed:    "📦 Fixed",
+  flexible: "🔀 Flexible",
+  volume:   "🔢 Volume",
+};
+
+const DISPLAY_MODE_LABELS: Record<string, string> = {
+  inline: "Inline",
+  popup:  "Popup",
+  both:   "Both",
+};
+
 export default function ProductsIndex() {
   const { groups } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
@@ -44,9 +57,7 @@ export default function ProductsIndex() {
             Manage which products appear together on product pages.
           </p>
         </div>
-        <Link to="new" className="btn btn-primary">
-          + Create Group
-        </Link>
+        <Link to="new" className="btn btn-primary">+ Create Group</Link>
       </div>
 
       {/* Groups Table */}
@@ -59,9 +70,7 @@ export default function ProductsIndex() {
               Create your first group to start showing frequently bought together
               products on your store.
             </p>
-            <Link to="new" className="btn btn-primary">
-              Create your first group
-            </Link>
+            <Link to="new" className="btn btn-primary">Create your first group</Link>
           </div>
         </div>
       ) : (
@@ -70,8 +79,10 @@ export default function ProductsIndex() {
             <thead>
               <tr>
                 <th>Main Product</th>
-                <th>Linked Products</th>
-                <th>Discount</th>
+                <th>Type</th>
+                <th>Products</th>
+                <th>Discount Tiers</th>
+                <th>Display</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -86,73 +97,63 @@ export default function ProductsIndex() {
                     <div className="text-xs text-shopify-text-subdued">
                       ID: {parseGid(group.productId)}
                     </div>
+                    {group.aiGenerated && (
+                      <span className="text-xs text-blue-600">🤖 AI</span>
+                    )}
                   </td>
                   <td>
-                    <span className="badge badge-neutral">
-                      {group.fbtProducts.length} product
-                      {group.fbtProducts.length !== 1 ? "s" : ""}
+                    <span className="text-sm">
+                      {BUNDLE_TYPE_LABELS[group.bundleType] ?? group.bundleType}
                     </span>
                   </td>
                   <td>
-                    {group.discountRule ? (
-                      <span className="badge badge-success">
-                        {group.discountRule.discountType === "percentage"
-                          ? `${group.discountRule.discountValue}% off`
-                          : group.discountRule.discountType === "fixed"
-                          ? `$${group.discountRule.discountValue} off`
-                          : "None"}
-                      </span>
+                    <span className="badge badge-neutral">
+                      {group.fbtProducts.length} product{group.fbtProducts.length !== 1 ? "s" : ""}
+                    </span>
+                  </td>
+                  <td>
+                    {group.discountTiers.length > 0 ? (
+                      <div className="flex flex-col gap-1">
+                        {group.discountTiers.map((t) => (
+                          <span key={t.id} className="badge badge-success text-xs">
+                            {t.minItems}+ → {formatTierLabel(t)}
+                          </span>
+                        ))}
+                      </div>
                     ) : (
                       <span className="text-shopify-text-subdued text-sm">—</span>
                     )}
                   </td>
                   <td>
-                    <span
-                      className={`badge ${
-                        group.isActive ? "badge-success" : "badge-neutral"
-                      }`}
-                    >
+                    <span className="text-sm text-shopify-text-subdued">
+                      {DISPLAY_MODE_LABELS[group.displayMode] ?? group.displayMode}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`badge ${group.isActive ? "badge-success" : "badge-neutral"}`}>
                       {group.isActive ? "Active" : "Inactive"}
                     </span>
                   </td>
                   <td>
                     <div className="flex items-center gap-2">
-                      <Link
-                        to={`${group.id}`}
-                        className="btn btn-secondary text-xs py-1 px-2"
-                      >
+                      <Link to={`${group.id}`} className="btn btn-secondary text-xs py-1 px-2">
                         Edit
                       </Link>
                       <Form method="post" className="inline">
                         <input type="hidden" name="intent" value="toggle" />
                         <input type="hidden" name="groupId" value={group.id} />
-                        <input
-                          type="hidden"
-                          name="isActive"
-                          value={String(group.isActive)}
-                        />
-                        <button
-                          type="submit"
-                          disabled={isSubmitting}
-                          className="btn btn-secondary text-xs py-1 px-2"
-                        >
+                        <input type="hidden" name="isActive" value={String(group.isActive)} />
+                        <button type="submit" disabled={isSubmitting}
+                          className="btn btn-secondary text-xs py-1 px-2">
                           {group.isActive ? "Disable" : "Enable"}
                         </button>
                       </Form>
-                      <Form
-                        method="post"
-                        onSubmit={(e) => {
-                          if (!confirm("Delete this FBT group?")) e.preventDefault();
-                        }}
-                        className="inline"
-                      >
+                      <Form method="post" className="inline"
+                        onSubmit={(e) => { if (!confirm("Delete this FBT group?")) e.preventDefault(); }}>
                         <input type="hidden" name="intent" value="delete" />
                         <input type="hidden" name="groupId" value={group.id} />
-                        <button
-                          type="submit"
-                          disabled={isSubmitting}
-                          className="btn btn-destructive text-xs py-1 px-2"
-                        >
+                        <button type="submit" disabled={isSubmitting}
+                          className="btn btn-destructive text-xs py-1 px-2">
                           Delete
                         </button>
                       </Form>
