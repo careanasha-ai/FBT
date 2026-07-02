@@ -11,7 +11,7 @@ import { requireShop } from "~/services/auth.server";
 import { getFbtGroup, updateFbtGroup } from "~/services/fbt.server";
 import { FbtGroupSchema } from "~/utils/validation";
 import { parseGid } from "~/utils/shopify";
-import { formatTierLabel } from "~/services/discount.server";
+import { formatTierLabel } from "~/utils/currency";
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const shop = await requireShop(request);

@@ -1,6 +1,25 @@
 /**
- * Currency and price formatting utilities
+ * Currency, price formatting, and discount display utilities
  */
+
+// ─── Discount tier display ────────────────────────────────────────────────────
+
+export interface TierLike {
+  discountType: string;
+  discountValue: number | string | { toString(): string };
+}
+
+/**
+ * Format a discount tier for display in admin UI and product list.
+ * Safe to import in both server and client code.
+ */
+export function formatTierLabel(tier: TierLike): string {
+  const value = Number(tier.discountValue);
+  if (tier.discountType === "percentage") return `${value}% off`;
+  if (tier.discountType === "fixed") return `$${value} off`;
+  if (tier.discountType === "price") return `Bundle price: $${value}`;
+  return "No discount";
+}
 
 /**
  * Format a numeric price for display

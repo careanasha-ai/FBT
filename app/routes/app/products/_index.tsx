@@ -3,7 +3,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from "react-router";
 
 import { requireShop } from "~/services/auth.server";
 import { listFbtGroups, toggleFbtGroup, deleteFbtGroup } from "~/services/fbt.server";
-import { formatTierLabel } from "~/services/discount.server";
+import { formatTierLabel } from "~/utils/currency";
 import { parseGid } from "~/utils/shopify";
 
 export async function loader({ request }: LoaderFunctionArgs) {

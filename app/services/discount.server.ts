@@ -78,14 +78,9 @@ export function buildNudgeMessage(
 
 /**
  * Format a discount tier for display in the admin UI.
+ * Re-exported from ~/utils/currency for server callers.
  */
-export function formatTierLabel(tier: DiscountTier): string {
-  const value = Number(tier.discountValue);
-  if (tier.discountType === "percentage") return `${value}% off`;
-  if (tier.discountType === "fixed") return `$${value} off`;
-  if (tier.discountType === "price") return `Bundle price: $${value}`;
-  return "No discount";
-}
+export { formatTierLabel } from "~/utils/currency";
 
 /**
  * Generate a unique discount code for a bundle session (Phase 1 cart attributes approach).
