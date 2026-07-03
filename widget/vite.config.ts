@@ -27,7 +27,7 @@ export default defineConfig({
         entryFileNames: "fbt-widget.js",
       },
     },
-    minify: "terser",
+    minify: "esbuild",
     sourcemap: false,
     target: "es2015",         // Broad browser support for storefronts
   },
